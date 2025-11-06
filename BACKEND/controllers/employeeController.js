@@ -2,7 +2,8 @@ const Employee = require('../models/Employee');
 const { comparePassword } = require('../utils/encryption'); //checks if the entered password matches.
 const { generateToken } = require('../utils/jwt'); // creates token for authentication
 const { handleLoginAttempt } = require('../middleware/auth'); //keeps track of failed login attempts
-
+const Transaction = require('../models/Transaction');
+const Customer = require('../models/Customer');
 
 
 //POST /api/employee/login
@@ -153,8 +154,6 @@ const getEmployeeProfile = async (req, res) => {
   }
 };
 
-
-
 //POST /api/employee/logout
 //logout is handled in the frontend by deleting the token so this function only return suceess/failure messages
 const logoutEmployee = async (req, res) => {
@@ -173,8 +172,224 @@ const logoutEmployee = async (req, res) => {
   }
 };
 
+
+// GET /api/employee/dashboard
+const getDashboardStats = async (req, res) => {
+  try {
+    const pendingCount = await Transaction.countDocuments({ status: 'Pending' });
+    const verifiedCount = await Transaction.countDocuments({ status: 'Verified' });
+    const submittedToday = await Transaction.countDocuments({
+      status: 'Submitted',
+      submittedAt: {
+        $gte: new Date(new Date().setHours(0, 0, 0, 0))
+      }
+    });
+
+    // Get recent pending transactions (last 5)
+    const recentPending = await Transaction.find({ status: 'Pending' })
+      .populate('customerId', 'full_name account_number')
+      .sort({ createdAt: -1 })
+      .limit(5)
+      .select('amount currency beneficiaryName createdAt referenceNumber');
+
+    res.status(200).json({
+      success: true,
+      data: {
+        stats: {
+          pendingTransactions: pendingCount,
+          verifiedTransactions: verifiedCount,
+          submittedToday: submittedToday
+        },
+        recentPending
+      }
+    });
+
+  } catch (error) {
+    console.error('Dashboard stats error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching dashboard statistics'
+    });
+  }
+};
+
+//GET /api/employee/pending-transactions
+const getPendingTransactions = async (req, res) => {
+  try {
+    const { page = 1, limit = 10, sortBy = 'created_at', sortOrder = 'desc' } = req.query;
+
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+    const sort = { [sortBy]: sortOrder === 'asc' ? 1 : -1 };
+
+    const transactions = await Transaction.find({ status: 'Pending' })
+      .populate('customer_id', 'full_name account_number username')
+      .sort(sort)
+      .skip(skip)
+      .limit(parseInt(limit));
+
+    const total = await Transaction.countDocuments({ status: 'Pending' });
+
+    res.status(200).json({
+      success: true,
+      data: {
+        transactions,
+        pagination: {
+          currentPage: parseInt(page),
+          totalPages: Math.ceil(total / parseInt(limit)),
+          totalTransactions: total,
+          limit: parseInt(limit)
+        }
+      }
+    });
+
+  } catch (error) {
+    console.error('Get pending transactions error:', error);
+    console.error('Full error:', error.stack);
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching pending transactions',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+};
+
+// GET /api/employee/transaction/:id
+const getTransactionById = async (req, res) => {
+  try {
+    const transaction = await Transaction.findById(req.params.id)
+      .populate('customer_id', 'full_name account_number username id_number')
+      .populate('verified_by', 'employee_name username');
+
+    if (!transaction) {
+      return res.status(404).json({
+        success: false,
+        message: 'Transaction not found'
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      data: transaction
+    });
+
+  } catch (error) {
+    console.error('Get transaction error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching transaction details'
+    });
+  }
+};
+
+
+// PUT /api/employee/verify-transaction/:id
+//https://localhost:5443/api/employee/verify-transaction/690c66eb41645e62084627d7
+const verifyTransaction = async (req, res) => {
+  try {
+    const { verification_notes } = req.body;
+
+    const transaction = await Transaction.findById(req.params.id);
+
+    if (!transaction) {
+      return res.status(404).json({
+        success: false,
+        message: 'Transaction not found'
+      });
+    }
+
+    if (transaction.status !== 'pending') {
+      return res.status(400).json({
+        success: false,
+        message: `Transaction cannot be verified. Current status: ${transaction.status}`
+      });
+    }
+
+    transaction.status = 'Verified';
+    transaction.verified_by = req.user.id;
+    transaction.verified_at = Date.now();
+    
+    if (verification_notes) {
+      transaction.verification_notes = verification_notes;
+    }
+
+    await transaction.save();
+
+    const updatedTransaction = await Transaction.findById(transaction._id)
+      .populate('customer_id', 'full_name account_number')
+      .populate('verified_by', 'employee_name username');
+
+    res.status(200).json({
+      success: true,
+      message: 'Transaction verified successfully',
+      data: updatedTransaction
+    });
+
+  } catch (error) {
+    console.error('Verify transaction error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error verifying transaction'
+    });
+  }
+};
+
+// PUT /api/employee/reject-transaction/:id
+const rejectTransaction = async (req, res) => {
+  try {
+    const { rejection_reason } = req.body;
+
+    const transaction = await Transaction.findById(req.params.id);
+
+    if (!transaction) {
+      return res.status(404).json({
+        success: false,
+        message: 'Transaction not found'
+      });
+    }
+
+    if (transaction.status === 'submitted' ) {
+      return res.status(400).json({
+        success: false,
+        message: 'Transaction cannot be rejected at this stage'
+      });
+    }
+
+    transaction.status = 'rejected';
+    transaction.verified_by = req.user.id;
+    transaction.rejection_reason = rejection_reason;
+    transaction.verified_at = Date.now();
+
+    await transaction.save();
+
+    const updatedTransaction = await Transaction.findById(transaction._id)
+      .populate('customer_id', 'full_name account_number')
+      .populate('verified_by', 'employee_name username');
+
+    res.status(200).json({
+      success: true,
+      message: 'Transaction rejected',
+      data: updatedTransaction
+    });
+
+  } catch (error) {
+    console.error('Reject transaction error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error rejecting transaction'
+    });
+  }
+};
+
+
+
+
 module.exports = {
   loginEmployee,
   getEmployeeProfile,
-  logoutEmployee
+  logoutEmployee, 
+  getDashboardStats,
+  getPendingTransactions,
+  getTransactionById,
+  verifyTransaction,
+  rejectTransaction
 }; //making the functions available

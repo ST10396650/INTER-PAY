@@ -134,7 +134,9 @@ app.get('/', (req, res) => {
 // API routes
 const customerRoutes = require("./routes/customerRoutes");
 app.use("/api/customer", customerRoutes);
-app.use('/api/employee', require('./routes/employeeRoutes'));
+
+const employeeRoutes = require('./routes/employeeRoutes');
+app.use('/api/employee', employeeRoutes);
 
 app.use((req, res) => {
   res.status(404).json({
