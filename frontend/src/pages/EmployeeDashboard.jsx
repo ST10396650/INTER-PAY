@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { paymentService } from '../services/api'
+import { employeeService } from '../services/api'  // Use employeeService here
 import { getCurrentUser } from '../services/authService'
 import { User, History, TrendingUp } from 'lucide-react'
 
@@ -12,31 +12,36 @@ const EmployeeDashboard = () => {
     totalTransactions: 0,
     pendingTransactions: 0,
     verifiedTransactions: 0,
-    // totalAmount: 0,  // removed
   })
 
   useEffect(() => {
     const user = getCurrentUser()
     setFullName(user?.full_name || user?.username || 'Employee')
 
-    const fetchTransactions = async () => {
+    const fetchDashboardData = async () => {
       try {
-        const data = await paymentService.getTransactions()
-        setTransactions(data.slice(0, 5))
+        // Fetch dashboard stats (pending, verified counts etc)
+        const dashboardResponse = await employeeService.getDashboardStats()
+        const dashboardData = dashboardResponse.data
 
+        // Update stats from backend counts
         setStats({
-          totalTransactions: data.length,
-          pendingTransactions: data.filter(t => t.status === 'pending').length,
-          verifiedTransactions: data.filter(t => t.status === 'verified').length,
-          // totalAmount: data.reduce((sum, t) => sum + (t.amount || 0), 0),  // removed
+          pendingTransactions: dashboardData.stats.pendingTransactions || 0,
+          verifiedTransactions: dashboardData.stats.verifiedTransactions || 0,
+          totalTransactions: dashboardData.stats.pendingTransactions + dashboardData.stats.verifiedTransactions, // or calculate differently if you have total count on backend
         })
+
+        // Optionally, fetch recent pending transactions from dashboard data
+        setTransactions(dashboardData.recentPending || [])
+
       } catch (err) {
-        console.error('Failed to fetch transactions:', err)
+        console.error('Failed to fetch dashboard data:', err)
       } finally {
         setLoading(false)
       }
     }
-    fetchTransactions()
+
+    fetchDashboardData()
   }, [])
 
   return (
@@ -64,8 +69,6 @@ const EmployeeDashboard = () => {
           <div>{stats.verifiedTransactions}</div>
           <div>Verified</div>
         </div>
-
-        {/* Removed Total Amount Section */}
       </div>
 
       <div style={styles.actionsGrid}>
@@ -73,24 +76,6 @@ const EmployeeDashboard = () => {
         <Link to="/employee/transactions" style={styles.actionCard}>View Transactions</Link>
         <Link to="/employee/history" style={styles.actionCard}>Verified History</Link>
       </div>
-
-      <section style={{ marginTop: 40 }}>
-        <h2>Recent Transactions</h2>
-        {loading ? (
-          <p>Loading transactions...</p>
-        ) : transactions.length === 0 ? (
-          <p>No transactions found.</p>
-        ) : (
-          <ul>
-            {transactions.map(t => (
-              <li key={t._id || t.id} style={{ marginBottom: 10 }}>
-                <strong>{new Date(t.createdAt || t.date).toLocaleString()}</strong> - {t.status} - {t.beneficiary_name} - {t.amount?.toLocaleString() || '0.00'} {t.currency || ''}
-              </li>
-            ))}
-          </ul>
-        )}
-        <Link to="/employee/transactions">View All Transactions</Link>
-      </section>
     </div>
   )
 }
