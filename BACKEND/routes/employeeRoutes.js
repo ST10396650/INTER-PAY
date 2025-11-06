@@ -42,6 +42,6 @@ router.put('/verify-transaction/:id', authenticate, isEmployee,  hasPermission('
 router.put('/reject-transaction/:id', authenticate, isEmployee, hasPermission('verify_transactions'), rejectTransaction);
 
 //POST /api/employee/submit-to-swift
-router.post('/submit-to-swift', isEmployee, authenticate, hasPermission('submit_to_swift'), submitToSwift);
+router.post('/submit-to-swift', authenticate, isEmployee, hasPermission('submit_to_swift'), submitToSwift);
 
 module.exports = router;
