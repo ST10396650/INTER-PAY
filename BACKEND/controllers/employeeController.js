@@ -382,33 +382,43 @@ const rejectTransaction = async (req, res) => {
 
 const submitToSwift = async (req, res ) => {
   try{
-    const {transaction_ids} = req.body;
+    const { transaction_ids } = req.body;
 
-    if (!transaction_ids || Array.isArray(transaction_ids) || transaction_ids.length === 0)
-    {
+    
+    if (!transaction_ids || !Array.isArray(transaction_ids) || transaction_ids.length === 0) {
       return res.status(400).json({
         success: false,
-        message: "transaction_ids must not be empty"
-
+        message: "transaction_ids array is required and must not be empty"
       });
     }
 
-    const transations = await Transaction.find({
-      _id: {$in: transaction_ids},
-      status: 'verified' 
+    const transactions = await Transaction.find({
+      _id: { $in: transaction_ids },
+      status: 'verified'
     });
 
-    if (transaction.length === 0) {
+    if (transactions.length === 0) {
       return res.status(400).json({
         success: false,
         message: 'No verified transactions found'
       });
     }
 
-    const submitted_at = Date.now();
+    if (transactions.length !== transaction_ids.length) {
+      const foundIds = transactions.map(t => t._id.toString());
+      const notFoundIds = transaction_ids.filter(id => !foundIds.includes(id));
+      
+      return res.status(400).json({
+        success: false,
+        message: 'Some transactions are not in verified status or do not exist',
+        notFoundIds: notFoundIds
+      });
+    }
 
-    await Transaction.updateMany(
-      { _id: { $in: transaction_ids} },
+    const submitted_at = Date.now();
+    
+   await Transaction.updateMany(
+      { _id: { $in: transaction_ids } },
       {
         $set: {
           status: 'submitted',
@@ -419,20 +429,21 @@ const submitToSwift = async (req, res ) => {
   
 
   res.status(200).json({
-    success: true,
-    message: '${transactions.length} transactions submitted to SWIFT successfully',
-    data: {
-      submittedCount: transactions.length,
-      submitted_at: submitted_at,
-      transaction_ids: transaction_ids
-    }
-  });
+      success: true,
+      message: `${transactions.length} transaction(s) submitted to SWIFT successfully`,
+      data: {
+        submittedCount: transactions.length,
+        submitted_at: submitted_at,
+        transaction_ids: transaction_ids
+      }
+    });
 
   } catch (error) {
-    console.error('Submit to SWIFT error', error);
+    console.error('Submit to SWIFT error:', error);
     res.status(500).json({
       success: false,
-      message: 'Error submitting tranactions to SWIFT'
+      message: 'Error submitting transactions to SWIFT',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
     });
   }
 };
