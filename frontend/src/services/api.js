@@ -15,14 +15,9 @@ const apiClient = axios.create({
 // Request interceptor to add auth token
 apiClient.interceptors.request.use(
     (config) => {
-        console.log('Request:', config.method?.toUpperCase(), config.url); // Debug log
-        
         const token = localStorage.getItem('token')
         if (token) {
             config.headers.Authorization = `Bearer ${token}`
-            console.log('🔑 Token added to request'); // Debug log
-        } else {
-            console.warn('⚠️ No token found in localStorage'); // Debug log
         }
         return config
     },
@@ -33,18 +28,11 @@ apiClient.interceptors.request.use(
 
 // Response interceptor for error handling
 apiClient.interceptors.response.use(
-    (response) => {
-        console.log('✅ Response:', response.status, response.config.url); // Debug log
-        return response;
-    },
+    (response) => response,
     (error) => {
-        console.error('❌ Response error:', error.response?.status, error.config?.url); // Debug log
-        
         if (error.response?.status === 401) {
             // Token expired or invalid
-            console.warn('🚪 Unauthorized - clearing auth and redirecting to login');
             localStorage.removeItem('token')
-            localStorage.removeItem('user')
             localStorage.removeItem('userType')
             window.location.href = '/login'
         }
@@ -71,6 +59,8 @@ export const authService = {
     },
 
     async verifyToken(token) {
+        // This would typically call a token verification endpoint
+        // For now, we'll use the profile endpoint
         const userType = localStorage.getItem('userType')
         const endpoint = userType === 'employee' ? '/employee/profile' : '/customer/profile'
         const response = await apiClient.get(endpoint)
@@ -89,7 +79,6 @@ export const authService = {
 
 export const paymentService = {
     async createPayment(paymentData) {
-        console.log('💳 Creating payment:', paymentData);
         const response = await apiClient.post('/customer/payment', paymentData)
         return response.data
     },

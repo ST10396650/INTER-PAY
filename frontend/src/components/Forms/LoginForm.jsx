@@ -12,7 +12,7 @@ const LoginForm = () => {
         username: '',
         account_number: '',
         password: '',
-        userType: 'customer'
+        userType: 'customer'  // default to customer
     })
 
     const [errors, setErrors] = useState({})
@@ -21,7 +21,6 @@ const LoginForm = () => {
 
     const message = location.state?.message
 
-    // Error messages for validation
     const errorMessages = {
         username: 'Username must be 3-20 characters (letters, numbers, underscore only)',
         account_number: 'Account number must be 10-12 digits'
@@ -48,27 +47,23 @@ const LoginForm = () => {
         const newErrors = {}
 
         if (formData.userType === 'customer') {
-            // Validate username for customer
             if (!formData.username) {
                 newErrors.username = 'Username is required'
             } else if (!validateInput('username', formData.username)) {
                 newErrors.username = errorMessages.username
             }
 
-            // Validate account number for customer
             if (!formData.account_number) {
                 newErrors.account_number = 'Account number is required'
             } else if (!validateInput('accountNumber', formData.account_number)) {
                 newErrors.account_number = errorMessages.account_number
             }
         } else {
-            // Validate username/employee ID for employee
             if (!formData.username) {
                 newErrors.username = 'Username or Employee ID is required'
             }
         }
 
-        // Validate password for both
         if (!formData.password) {
             newErrors.password = 'Password is required'
         }
@@ -77,85 +72,84 @@ const LoginForm = () => {
         return Object.keys(newErrors).length === 0
     }
 
-   const handleSubmit = async (e) => {
-    e.preventDefault()
+    const handleSubmit = async (e) => {
+        e.preventDefault()
 
-    if (!validateForm()) {
-        return
+        if (!validateForm()) {
+            return
+        }
+
+        setIsSubmitting(true)
+        setErrors({})
+
+        try {
+            console.log('🔄 Attempting login...', { 
+                userType: formData.userType,
+                username: formData.username 
+            })
+
+            let response
+
+            if (formData.userType === 'customer') {
+                response = await loginCustomer({
+                    username: formData.username,
+                    accountNumber: formData.account_number,
+                    password: formData.password
+                })
+                // Save userType explicitly to localStorage
+                localStorage.setItem('userType', 'customer')
+            } else {
+                response = await loginEmployee({
+                    username: formData.username,
+                    password: formData.password
+                })
+                localStorage.setItem('userType', 'employee')
+            }
+
+            console.log('Response received:', response)
+
+            const token = localStorage.getItem('token')
+            const userType = localStorage.getItem('userType')
+            const user = localStorage.getItem('user')
+
+            console.log('Checking localStorage:', {
+                hasToken: !!token,
+                userType,
+                hasUser: !!user
+            })
+
+            if (!token) {
+                throw new Error('Authentication token not received. Please try again.')
+            }
+
+            console.log('✅ Login successful!')
+
+            const redirectPath = userType === 'employee' 
+                ? '/employee/dashboard' 
+                : '/dashboard'
+
+            console.log('🔀 Redirecting to:', redirectPath)
+            navigate(redirectPath)
+
+        } catch (error) {
+            console.error('❌ Login failed:', error)
+
+            let errorMessage = 'Login failed. Please check your credentials.'
+
+            if (error.message) {
+                errorMessage = error.message
+            } else if (error.error) {
+                errorMessage = error.error
+            } else if (typeof error === 'string') {
+                errorMessage = error
+            }
+
+            setErrors({ submit: errorMessage })
+        } finally {
+            setIsSubmitting(false)
+        }
     }
 
-    setIsSubmitting(true)
-    setErrors({})
-
-    try {
-        console.log('🔄 Attempting login...', { 
-            userType: formData.userType,
-            username: formData.username 
-        });
-
-        let response
-
-        if (formData.userType === 'customer') {
-            // Customer login
-            response = await loginCustomer({
-                username: formData.username,
-                accountNumber: formData.account_number,
-                password: formData.password
-            })
-        } else {
-            // Employee login
-            response = await loginEmployee({
-                username: formData.username,
-                password: formData.password
-            })
-        }
-
-        console.log('📦 Response received:', response);
-
-        // Verify token was saved
-        const token = localStorage.getItem('token')
-        const userType = localStorage.getItem('userType')
-        const user = localStorage.getItem('user')
-
-        console.log('🔍 Checking localStorage:', {
-            hasToken: !!token,
-            userType,
-            hasUser: !!user
-        });
-
-        if (!token) {
-            throw new Error('Authentication token not received. Please try again.')
-        }
-
-        console.log('✅ Login successful!');
-
-        // Navigate based on user type
-        const redirectPath = formData.userType === 'employee' 
-            ? '/employee/dashboard' 
-            : '/dashboard'
-        
-        console.log('🔀 Redirecting to:', redirectPath);
-        navigate(redirectPath)
-
-    } catch (error) {
-        console.error('❌ Login failed:', error);
-        
-        // Extract error message
-        let errorMessage = 'Login failed. Please check your credentials.';
-        
-        if (error.message) {
-            errorMessage = error.message;
-        } else if (error.error) {
-            errorMessage = error.error;
-        } else if (typeof error === 'string') {
-            errorMessage = error;
-        }
-        
-        setErrors({ submit: errorMessage })
-    } finally {
-        setIsSubmitting(false)
-    }
-}
     return (
         <div style={styles.container}>
             <div style={styles.card}>

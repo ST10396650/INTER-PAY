@@ -1,3 +1,100 @@
+import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext';
+
+export default function MakePayment() {
+    const { token } = useAuth();
+    const navigate = useNavigate();
+
+    const [form, setForm] = useState({
+        amount: '',
+        currency: 'USD',
+        provider: 'SWIFT',
+        beneficiary_account_number: '',
+        beneficiary_name: '',
+        swift_code: '',
+        bank_name: '',
+        bank_address: '',
+        bank_country: ''
+    });
+
+    const [errors, setErrors] = useState({});
+    const [success, setSuccess] = useState('');
+
+    const regex = {
+        amount: /^\d+(\.\d{1,2})?$/,
+        accountNumber: /^[A-Z0-9]{8,34}$/,
+        beneficiaryName: /^[a-zA-Z\s\-']{2,100}$/,
+        swiftCode: /^[A-Z]{6}[A-Z0-9]{2}([A-Z0-9]{3})?$/
+    };
+
+    const handleChange = (e) => {
+        const { name, value } = e.target;
+        setForm({ ...form, [name]: value });
+    };
+
+    const validate = () => {
+        const newErrors = {};
+        if (!regex.amount.test(form.amount)) newErrors.amount = 'Invalid amount (max 2 decimals)';
+        if (!regex.accountNumber.test(form.beneficiary_account_number)) newErrors.beneficiary_account_number = 'Invalid account number';
+        if (!regex.beneficiaryName.test(form.beneficiary_name)) newErrors.beneficiary_name = 'Invalid beneficiary name';
+        if (!regex.swiftCode.test(form.swift_code)) newErrors.swift_code = 'Invalid SWIFT code';
+        if (!form.bank_name) newErrors.bank_name = 'Bank name is required';
+        if (!form.bank_country) newErrors.bank_country = 'Bank country is required';
+        setErrors(newErrors);
+        return Object.keys(newErrors).length === 0;
+    };
+
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        setSuccess('');
+        if (!validate()) return;
+
+        try {
+            if (!token) {
+                setErrors({ submit: 'No authentication token found. Please login again.' });
+                return;
+            }
+
+            const response = await fetch('http://localhost:5000/api/customer/payment', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify(form)
+            });
+
+            if (response.ok) {
+                setSuccess('Payment submitted successfully!');
+
+                // Reset form
+                setForm({
+                    amount: '',
+                    currency: 'USD',
+                    provider: 'SWIFT',
+                    beneficiary_account_number: '',
+                    beneficiary_name: '',
+                    swift_code: '',
+                    bank_name: '',
+                    bank_address: '',
+                    bank_country: ''
+                });
+
+                // Redirect to CustomerDashboard after 1 second
+                setTimeout(() => {
+                    navigate('/dashboard');
+                }, 1000);
+            } else {
+                const data = await response.json();
+                setErrors({ submit: data.message || 'Payment failed' });
+            }
+        } catch (err) {
+            setErrors({ submit: err.message });
+        }
+    };
+
+/*
 import React, { useState } from 'react'; 
 // For programmatic navigation after payment (React Router, 2025)
 import { useNavigate } from 'react-router-dom'; 
@@ -34,13 +131,13 @@ export default function MakePayment() {
         beneficiaryName: /^[a-zA-Z\s\-']{2,100}$/, 
         swiftCode: /^[A-Z]{6}[A-Z0-9]{2}([A-Z0-9]{3})?$/
     };
-
+/*
     // Handle input changes and update form state
     const handleChange = (e) => {
         const { name, value } = e.target;
         setForm({ ...form, [name]: value });
     };
-
+/*
     // Validate form fields and return whether valid
     const validate = () => {
         const newErrors = {};
@@ -53,6 +150,8 @@ export default function MakePayment() {
         setErrors(newErrors);  // Set errors state
         return Object.keys(newErrors).length === 0;  // Return true if no errors
     };
+    */
+   /*
 
     // Handle form submission
     const handleSubmit = async (e) => {
@@ -67,7 +166,7 @@ export default function MakePayment() {
             }
 
             // Send POST request to backend API with payment data
-            const response = await fetch('https://localhost:5443/api/customer/payment', {
+            const response = await fetch('http://localhost:5000/api/customer/payment', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -99,6 +198,7 @@ export default function MakePayment() {
             setErrors({ submit: err.message });  // Handle network or unexpected errors
         }
     };
+    */
 
     return (
         <div className="make-payment-wrapper">

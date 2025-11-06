@@ -55,44 +55,28 @@ export const AuthProvider = ({ children }) => {
         }
     }, [token])
 
-  const login = useCallback(async (loginData, userType) => {
-    try {
-        setLoading(true)
-        setError('')
-        
-        console.log('Attempting login...', { userType })
-        
-        const response = await authService.login(loginData, userType)
-        
-        console.log('✅ Login response:', response)
-        
-        const { token: newToken, data } = response
-        
-        // Save everything to state
-        setToken(newToken)
-        setUser(data)
-        
-        // Save everything to localStorage
-        localStorage.setItem('token', newToken)
-        localStorage.setItem('user', JSON.stringify(data))
-        localStorage.setItem('userType', userType)
-        
-        console.log('Saved to localStorage:', {
-            token: newToken,
-            user: data,
-            userType
-        })
-        
-        return { success: true }
-    } catch (error) {
-        console.error('Login error:', error)
-        const message = error.response?.data?.message || error.message || 'Login failed'
-        setError(message)
-        return { success: false, message }
-    } finally {
-        setLoading(false)
-    }
-}, [])
+    const login = useCallback(async (loginData, userType) => {
+        try {
+            setLoading(true)
+            setError('')
+
+            const response = await authService.login(loginData, userType)
+            const { token: newToken, data } = response
+
+            setToken(newToken)
+            setUser(data)
+            localStorage.setItem('token', newToken)
+            localStorage.setItem('userType', userType)
+
+            return { success: true }
+        } catch (error) {
+            const message = error.response?.data?.message || 'Login failed'
+            setError(message)
+            return { success: false, message }
+        } finally {
+            setLoading(false)
+        }
+    }, [])
 
     const register = useCallback(async (userData) => {
         try {

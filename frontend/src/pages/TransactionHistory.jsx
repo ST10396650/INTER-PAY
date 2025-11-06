@@ -1,8 +1,7 @@
 import React, { useEffect, useState } from 'react'; // React core library and hooks (React, 2025)
 import { Helmet } from 'react-helmet-async'; // Helmet for dynamic document head (react-helmet-async, 2024)
-import { useAuth } from '../contexts/AuthContext'; 
+import { useAuth } from '../contexts/AuthContext';
 import { paymentService } from '../services/api';
-
 
 export default function TransactionHistory() {
     // Access authentication token from AuthContext (React Context API, 2024)
@@ -69,10 +68,15 @@ export default function TransactionHistory() {
             </Helmet>
 
             <div className="history-container">
-                {/* Header Section */}
-                <div className="header">
-                    <h2>Transaction History</h2>
-                    <p>View all your payment transactions</p>
+                {/* Neat Header Section */}
+                <div className="header" style={headerStyles.container}>
+                    <h2 style={headerStyles.title}>
+                        Transaction History
+                    </h2>
+                    <p style={headerStyles.subtitle}>
+                        Review and manage all your payment transactions below
+                    </p>
+                    <hr style={headerStyles.divider} />
                 </div>
 
                 {/* Loading State Section */}
@@ -159,6 +163,32 @@ export default function TransactionHistory() {
     );
 }
 
+const headerStyles = {
+    container: {
+        marginBottom: '30px',
+        textAlign: 'center',
+        color: 'var(--text-primary)',
+    },
+    title: {
+        fontSize: '2.5rem',
+        fontWeight: '700',
+        marginBottom: '8px',
+    },
+    subtitle: {
+        fontSize: '1.125rem',
+        fontWeight: '400',
+        color: 'var(--text-secondary)',
+        marginBottom: '12px',
+    },
+    divider: {
+        width: '60px',
+        height: '3px',
+        backgroundColor: 'var(--accent-color)',
+        border: 'none',
+        margin: '0 auto',
+        borderRadius: '2px',
+    },
+};
 
 /* 
 ------------------------------------------------------------
