@@ -380,16 +380,74 @@ const rejectTransaction = async (req, res) => {
   }
 };
 
+const submitToSwift = async (req, res ) => {
+  try{
+    const {transaction_ids} = req.body;
+
+    if (!transaction_ids || Array.isArray(transaction_ids) || transaction_ids.length === 0)
+    {
+      return res.status(400).json({
+        success: false,
+        message: "transaction_ids must not be empty"
+
+      });
+    }
+
+    const transations = await Transaction.find({
+      _id: {$in: transaction_ids},
+      status: 'verified' 
+    });
+
+    if (transaction.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'No verified transactions found'
+      });
+    }
+
+    const submitted_at = Date.now();
+
+    await Transaction.updateMany(
+      { _id: { $in: transaction_ids} },
+      {
+        $set: {
+          status: 'submitted',
+          submitted_at: submitted_at
+        }
+      }
+    );
+  
+
+  res.status(200).json({
+    success: true,
+    message: '${transactions.length} transactions submitted to SWIFT successfully',
+    data: {
+      submittedCount: transactions.length,
+      submitted_at: submitted_at,
+      transaction_ids: transaction_ids
+    }
+  });
+
+  } catch (error) {
+    console.error('Submit to SWIFT error', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error submitting tranactions to SWIFT'
+    });
+  }
+};
+
 
 
 
 module.exports = {
-  loginEmployee,
+  loginEmployee, 
   getEmployeeProfile,
   logoutEmployee, 
   getDashboardStats,
   getPendingTransactions,
   getTransactionById,
   verifyTransaction,
-  rejectTransaction
+  rejectTransaction,
+  submitToSwift
 }; //making the functions available

@@ -9,7 +9,8 @@ const {
   getPendingTransactions,
   getTransactionById,
   verifyTransaction,
-  rejectTransaction
+  rejectTransaction,
+  submitToSwift
 } = require('../controllers/employeeController');
 const { authenticate, isEmployee, hasPermission } = require('../middleware/auth');
 
@@ -40,5 +41,7 @@ router.put('/verify-transaction/:id', authenticate, isEmployee,  hasPermission('
 // PUT /api/employee/reject-transaction/:id
 router.put('/reject-transaction/:id', authenticate, isEmployee, hasPermission('verify_transactions'), rejectTransaction);
 
+//POST /api/employee/submit-to-swift
+router.post('/submit-to-swift', isEmployee, authenticate, hasPermission('submit_to_swift'), submitToSwift);
 
 module.exports = router;
