@@ -1,0 +1,43 @@
+name: SonarQube Analysis
+on:
+  push:
+    branches:
+      - master  # Changed from main to master
+  pull_request:
+    types: [opened, synchronize, reopened]
+    branches:
+      - master  # Only PRs targeting master
+
+jobs:
+  sonarqube:
+    name: SonarQube SAST Scan
+    runs-on: ubuntu-latest  # Changed to ubuntu-latest (more common)
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Shallow clones disabled for better analysis
+      
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18.x'
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Run tests with coverage
+        run: npm test -- --coverage
+        continue-on-error: true
+      
+      - name: SonarQube Scan
+        uses: SonarSource/sonarqube-scan-action@v6
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}  # You'll need to add this secret
+        with:
+          args: >
+            -Dsonar.projectKey=INTER-PAY
+            -Dsonar.sources=.
+            -Dsonar.javascript.lcov.reportPaths=coverage/lcov.info
