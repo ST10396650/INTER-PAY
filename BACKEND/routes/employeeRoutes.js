@@ -10,7 +10,8 @@ const {
   getTransactionById,
   verifyTransaction,
   rejectTransaction,
-  submitToSwift
+  submitToSwift,
+  getAllTransactions
 } = require('../controllers/employeeController');
 const { authenticate, isEmployee, hasPermission } = require('../middleware/auth');
 
@@ -44,4 +45,6 @@ router.put('/reject-transaction/:id', authenticate, isEmployee, hasPermission('v
 //POST /api/employee/submit-to-swift
 router.post('/submit-to-swift', authenticate, isEmployee, hasPermission('submit_to_swift'), submitToSwift);
 
+// GET /api/employee/transactions
+router.get('/transactions', authenticate, isEmployee, hasPermission('view_all_transactions'), getAllTransactions);
 module.exports = router;

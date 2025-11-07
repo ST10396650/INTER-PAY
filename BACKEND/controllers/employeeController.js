@@ -448,8 +448,31 @@ const submitToSwift = async (req, res ) => {
   }
 };
 
+// GET /api/employee/transactions
+const getAllTransactions = async (req, res) => {
+  try {
+    const transactions = await Transaction.find()
+      .populate('customer_id', 'full_name account_number username')
+      .populate('verified_by', 'employee_name username')
+      .sort({ created_at: -1 });
 
+    res.status(200).json({
+      success: true,
+      data: {
+        transactions,
+        total: transactions.length
+      }
+    });
 
+  } catch (error) {
+    console.error('Get all transactions error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching transactions',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+};
 
 module.exports = {
   loginEmployee, 
@@ -460,5 +483,6 @@ module.exports = {
   getTransactionById,
   verifyTransaction,
   rejectTransaction,
-  submitToSwift
+  submitToSwift,
+  getAllTransactions
 }; //making the functions available
