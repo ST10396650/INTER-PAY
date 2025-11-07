@@ -43,6 +43,6 @@ jobs:
           SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}  # You'll need to add this secret
         with:
           args: >
-            -Dsonar.projectKey=INTER-PAY
+            -Dsonar.projectKey=ST10396650_INTER-PAY
             -Dsonar.sources=.
             -Dsonar.javascript.lcov.reportPaths=coverage/lcov.info
