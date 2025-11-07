@@ -24,11 +24,11 @@ jobs:
         with:
           node-version: '18.x'
           cache: 'npm'
-          cache-dependency-path: 'backend/package-lock.json'
+          cache-dependency-path: 'BACKEND/package-lock.json'
       
       - name: Install dependencies
         run: npm ci
-        working-directory: backend
+        working-directory: BACKEND
         continue-on-error: true
       
       - name: Run tests with coverage
